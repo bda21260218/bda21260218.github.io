@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cyber Jump 3D - 무한 스테이지 에디션</title>
+    <!-- Tailwind CSS for modern responsive UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for futuristic typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for UI icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js for outstanding 3D rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            font-family: 'Rajdhani', 'Orbitron', sans-serif;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        .hud-text {
+            font-family: 'Orbitron', sans-serif;
+        }
+        /* Neon Glow CSS */
+        .neon-glow {
+            text-shadow: 0 0 10px rgba(168, 85, 247, 0.8), 0 0 20px rgba(168, 85, 247, 0.5);
+        }
+        .neon-border-blue {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+        }
+        .neon-border-purple {
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.6);
+        }
+        /* Custom scrollbar for shop modal */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(168, 85, 247, 0.5);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 w-screen h-screen relative select-none">
+
+    <!-- 3D Game Canvas -->
+    <canvas id="game-canvas" class="absolute inset-0 z-0"></canvas>
+
+    <!-- UI Overlay Main Dashboard -->
+    <div id="ui-overlay" class="absolute inset-0 pointer-events-none z-10 flex flex-col justify-between p-4 md:p-6 transition-opacity duration-500">
+        <!-- Top Stats Row -->
+        <div class="flex flex-col md:flex-row justify-between items-start w-full gap-3 pointer-events-auto">
+            <!-- Branding HUD -->
+            <div class="bg-slate-900/90 backdrop-blur-md px-5 py-3 rounded-2xl border border-purple-500/30 neon-border-purple flex flex-col gap-1 max-w-[280px]">
+                <h1 class="text-xl font-black tracking-wider text-purple-400 flex items-center gap-2 hud-text">
+                    <i class="fa-solid fa-cube text-sm animate-spin-slow"></i> CYBER JUMP 3D
+                </h1>
+                <div class="text-[10px] text-slate-400 leading-relaxed font-medium">
+                    <span class="text-blue-400 font-semibold">이동:</span> W, A, S, D / 방향키<br>
+                    <span class="text-blue-400 font-semibold">점프:</span> Space / 스페이스바<br>
+                    <span class="text-blue-400 font-semibold">시점:</span> 마우스 드래그로 화면 회전
+                </div>
+            </div>
+
+            <!-- Stats Tracker -->
+            <div class="flex flex-wrap gap-2 self-end md:self-auto hud-text">
+                <!-- Coin Display -->
+                <div class="bg-amber-950/50 backdrop-blur-md px-4 py-2 rounded-xl border border-amber-500/30 text-center min-w-[90px] flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-coins text-amber-400 text-lg animate-pulse"></i>
+                    <div class="text-left">
+                        <span class="text-[8px] text-amber-500 block font-bold tracking-widest uppercase">COINS</span>
+                        <span id="ui-coins" class="text-lg font-black text-amber-400">0</span>
+                    </div>
+                </div>
+                <!-- Endless Stage Display -->
+                <div class="bg-slate-900/95 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-800 text-center min-w-[80px]">
+                    <span class="text-[9px] text-slate-500 block font-bold tracking-widest uppercase">STAGE</span>
+                    <span id="ui-stage" class="text-lg font-black text-cyan-400">1</span>
+                </div>
+                <div class="bg-slate-900/95 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-800 text-center min-w-[70px]">
+                    <span class="text-[9px] text-slate-500 block font-bold tracking-widest uppercase">DEATHS</span>
+                    <span id="ui-deaths" class="text-lg font-black text-rose-500">0</span>
+                </div>
+                <div class="bg-slate-900/95 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-800 text-center min-w-[70px]">
+                    <span class="text-[9px] text-slate-500 block font-bold tracking-widest uppercase">TIME</span>
+                    <span id="ui-timer" class="text-lg font-black text-emerald-400">00:00</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Middle Notification Toast -->
+        <div class="self-center flex flex-col items-center">
+            <div id="toast-message" class="opacity-0 scale-90 pointer-events-none transition-all duration-300 transform bg-slate-900/95 border border-cyan-500/50 text-cyan-400 px-6 py-3 rounded-full text-sm md:text-base font-black tracking-wider shadow-2xl flex items-center gap-3">
+                <i class="fa-solid fa-circle-info text-cyan-500"></i>
+                <span id="toast-text">체크포인트 저장됨!</span>
+            </div>
+        </div>
+
+        <!-- Bottom Row: Setting controllers & Touch panel -->
+        <div class="flex justify-between items-end w-full">
+            <!-- Action Controls & Shop Toggle -->
+            <div class="flex flex-col gap-2 pointer-events-auto">
+                <div class="bg-slate-900/90 backdrop-blur-md p-2 rounded-xl border border-slate-800 flex gap-2">
+                    <button id="btn-audio" class="w-10 h-10 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-lg text-slate-300 hover:text-white transition-all flex items-center justify-center">
+                        <i id="audio-icon" class="fa-solid fa-volume-high text-lg"></i>
+                    </button>
+                    <!-- Customize Shop Button -->
+                    <button id="btn-open-shop" class="px-4 py-1 bg-purple-600 hover:bg-purple-500 active:scale-95 border border-purple-400/50 text-white rounded-lg text-xs font-bold tracking-wider transition-all flex items-center gap-2 shadow-lg shadow-purple-500/20">
+                        <i class="fa-solid fa-shirt text-sm animate-pulse"></i> 캐릭터 꾸미기
+                    </button>
+                    <button id="btn-restart" class="px-3 py-1 bg-rose-950/50 hover:bg-rose-900/80 border border-rose-500/30 text-rose-400 hover:text-rose-200 rounded-lg text-xs font-bold tracking-wider transition-all flex items-center gap-1">
+                        <i class="fa-solid fa-arrows-rotate"></i> 처음부터 다시
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Joystick Controllers (Auto detected) -->
+            <div id="mobile-controls" class="pointer-events-auto hidden flex gap-6 items-center">
+                <!-- Virtual Joystick Area -->
+                <div class="relative w-28 h-28 bg-slate-900/60 rounded-full border border-slate-700/60 flex items-center justify-center shadow-inner" id="touch-joy-container">
+                    <div class="absolute w-12 h-12 bg-purple-500/80 rounded-full shadow-lg border border-purple-400/50 cursor-pointer" id="touch-joy-stick" style="left: calc(50% - 24px); top: calc(50% - 24px);"></div>
+                </div>
+                <!-- Massive Jump Button -->
+                <button id="touch-jump" class="w-[72px] h-[72px] bg-cyan-600 hover:bg-cyan-500 active:scale-95 rounded-full border border-cyan-400 shadow-xl flex flex-col items-center justify-center text-slate-950 font-black text-xs tracking-wider outline-none">
+                    <i class="fa-solid fa-chevron-up text-lg mb-0.5"></i>
+                    JUMP
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start / Welcome Screen Overlay -->
+    <div id="start-screen" class="absolute inset-0 bg-slate-950/95 z-20 flex flex-col items-center justify-center p-6 text-center transition-all duration-500">
+        <div class="max-w-md w-full bg-slate-900/80 p-8 rounded-3xl border border-purple-500/40 neon-border-purple flex flex-col items-center relative overflow-hidden backdrop-blur-lg">
+            <!-- Tech-deco line -->
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-rose-500"></div>
+            
+            <i class="fa-solid fa-infinity text-purple-500 text-5xl mb-4 animate-pulse"></i>
+            <h1 class="text-3xl md:text-4xl font-extrabold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-rose-400 neon-glow uppercase hud-text">
+                CYBER JUMP 3D
+            </h1>
+            <p class="text-slate-400 text-sm mt-3 font-semibold tracking-wider">무한의 점프 트랙! 끝없이 도전하고 꾸미세요!</p>
+            
+            <!-- Controls Guide Graphic -->
+            <div class="grid grid-cols-2 gap-3 w-full my-6 text-left text-xs bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+                <div class="flex items-center gap-2">
+                    <span class="bg-purple-950 text-purple-400 border border-purple-500/30 px-2 py-1 rounded font-bold">W, A, S, D</span>
+                    <span class="text-slate-300">이동 조작</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="bg-purple-950 text-purple-400 border border-purple-500/30 px-2 py-1 rounded font-bold">Space</span>
+                    <span class="text-slate-300">캐릭터 점프</span>
+                </div>
+                <div class="flex items-center gap-2 col-span-2 border-t border-slate-800/80 pt-2 mt-1">
+                    <span class="bg-cyan-950 text-cyan-400 border border-cyan-500/30 px-2 py-1 rounded font-bold"><i class="fa-solid fa-hand-pointer"></i> Drag</span>
+                    <span class="text-slate-300">화면 드래그로 카메라 360도 회전</span>
+                </div>
+            </div>
+
+            <!-- Start Game Play Buttons -->
+            <div class="flex flex-col gap-2 w-full">
+                <button id="btn-start-game" class="w-full py-4 bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 active:scale-98 text-slate-950 font-black tracking-widest text-base rounded-xl transition-all shadow-xl shadow-purple-500/20 hud-text">
+                    START INFINITE RUN
+                </button>
+                <button id="btn-start-shop" class="w-full py-3 bg-slate-800 hover:bg-slate-700 active:scale-98 border border-purple-500/40 text-purple-300 font-bold tracking-wider text-sm rounded-xl transition-all">
+                    <i class="fa-solid fa-shirt mr-1"></i> 커스텀 상점 입장
+                </button>
+            </div>
+            
+            <p class="text-[10px] text-slate-500 mt-4">데이터 로컬 저장 • 무한 스테이지 생성기 활성화됨</p>
+        </div>
+    </div>
+
+    <!-- Character Deco Shop Modal Overlay -->
+    <div id="shop-screen" class="absolute inset-0 bg-slate-950/90 z-30 flex flex-col items-center justify-center p-4 hidden">
+        <div class="max-w-xl w-full bg-slate-900/95 p-6 rounded-3xl border border-purple-500/40 neon-border-purple flex flex-col max-h-[90vh] relative overflow-hidden backdrop-blur-lg">
+            <!-- Header -->
+            <div class="flex justify-between items-center border-b border-slate-800 pb-4 mb-4">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-shirt text-purple-400 text-xl"></i>
+                    <h2 class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 hud-text">CYBER DECO SHOP</h2>
+                </div>
+                <!-- Current Coins -->
+                <div class="flex items-center gap-2 bg-amber-950/40 px-3 py-1.5 rounded-xl border border-amber-500/30">
+                    <i class="fa-solid fa-coins text-amber-400"></i>
+                    <span id="shop-coins" class="text-amber-400 font-black hud-text">0</span>
+                </div>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="flex gap-2 mb-4 bg-slate-950/60 p-1.5 rounded-xl border border-slate-800">
+                <button id="tab-skin" class="flex-1 py-2 text-xs font-bold rounded-lg bg-purple-600 text-white transition-all">스킨 컬러</button>
+                <button id="tab-accessory" class="flex-1 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition-all">액세서리</button>
+                <button id="tab-trail" class="flex-1 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition-all">점프 트레일</button>
+            </div>
+
+            <!-- Scrollable Items Area -->
+            <div id="shop-items-container" class="flex-1 overflow-y-auto grid grid-cols-2 gap-3 pr-1 mb-4">
+                <!-- Items populated dynamically by JS -->
+            </div>
+
+            <!-- Footer Buttons -->
+            <div class="flex gap-2 border-t border-slate-800 pt-4">
+                <button id="btn-close-shop" class="w-full py-3 bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-bold rounded-xl transition-all shadow-lg shadow-purple-500/20 text-sm">
+                    꾸미기 적용 및 닫기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Stage Clear Interstitial Screen -->
+    <div id="clear-screen" class="absolute inset-0 bg-slate-950/95 z-20 flex flex-col items-center justify-center p-6 text-center hidden">
+        <div class="max-w-md w-full bg-slate-900/90 p-8 rounded-3xl border border-emerald-500/40 flex flex-col items-center relative overflow-hidden backdrop-blur-lg">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-emerald-500"></div>
+            
+            <i class="fa-solid fa-circle-check text-emerald-400 text-6xl mb-4 animate-pulse"></i>
+            <h1 id="clear-title" class="text-3xl font-extrabold tracking-widest text-emerald-400 hud-text">STAGE 1 CLEAR</h1>
+            <p class="text-slate-400 text-sm mt-2">사이버 도전을 격파했습니다!</p>
+            
+            <!-- Result Stats -->
+            <div class="grid grid-cols-3 gap-3 w-full my-6 bg-slate-950/80 p-4 rounded-xl border border-slate-800">
+                <div class="text-center border-r border-slate-800">
+                    <span class="text-[10px] text-slate-500 uppercase block font-bold">소요 시간</span>
+                    <span id="clear-time" class="text-base font-bold text-cyan-400 hud-text">00:00</span>
+                </div>
+                <div class="text-center border-r border-slate-800">
+                    <span class="text-[10px] text-slate-500 uppercase block font-bold">사망 횟수</span>
+                    <span id="clear-deaths" class="text-base font-bold text-rose-500 hud-text">0</span>
+                </div>
+                <div class="text-center">
+                    <span class="text-[10px] text-slate-500 uppercase block font-bold">완료 보상</span>
+                    <span id="clear-bonus" class="text-base font-bold text-amber-400 hud-text">+30 🪙</span>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-2 w-full">
+                <button id="btn-play-again" class="w-full py-4 bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-slate-950 font-black tracking-widest text-base rounded-xl transition-all shadow-lg shadow-emerald-500/20 hud-text">
+                    다음 스테이지 비행
+                </button>
+                <button id="btn-clear-shop" class="w-full py-3 bg-slate-800 hover:bg-slate-700 active:scale-98 border border-purple-500/40 text-purple-300 font-bold tracking-wider text-sm rounded-xl transition-all">
+                    <i class="fa-solid fa-shirt mr-1"></i> 상점 가서 보상 쓰기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sound and Audio Engine Helper -->
+    <script>
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let soundEnabled = true;
+
+        function playSynthSound(type) {
+            if (!soundEnabled) return;
+            try {
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+
+                const now = audioContext.currentTime;
+
+                if (type === 'jump') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(160, now);
+                    osc.frequency.exponentialRampToValueAtTime(580, now + 0.15);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } else if (type === 'death') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(260, now);
+                    osc.frequency.linearRampToValueAtTime(30, now + 0.45);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+                    osc.start(now);
+                    osc.stop(now + 0.45);
+                } else if (type === 'checkpoint') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.setValueAtTime(554.37, now + 0.08);
+                    osc.frequency.setValueAtTime(659.25, now + 0.16);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                } else if (type === 'stage_clear') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(523.25, now);
+                    osc.frequency.setValueAtTime(659.25, now + 0.1);
+                    osc.frequency.setValueAtTime(783.99, now + 0.2);
+                    osc.frequency.setValueAtTime(1046.50, now + 0.3);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
+                    osc.start(now);
+                    osc.stop(now + 0.55);
+                } else if (type === 'coin') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(987.77, now);
+                    osc.frequency.setValueAtTime(1318.51, now + 0.08);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                }
+            } catch (e) {
+                console.warn('Audio output failed:', e);
+            }
+        }
+    </script>
+
+    <script>
+        const SHOP_ITEMS = {
+            skin: [
+                { id: 'skin-cyan', name: '시안 일렉트론', cost: 0, hex: 0x06b6d4, emissive: 0x0891b2, desc: '무료 기본 지급 일렉트론', owned: true },
+                { id: 'skin-pink', name: '사쿠라 홀로그램', cost: 20, hex: 0xec4899, emissive: 0xbe185d, desc: '달콤한 핑크빛 발광 호러', owned: false },
+                { id: 'skin-crimson', name: '네온 크림슨', cost: 40, hex: 0xef4444, emissive: 0xb91c1c, desc: '가장 뜨거운 붉은색 파장', owned: false },
+                { id: 'skin-green', name: '에메랄드 매트릭스', cost: 60, hex: 0x10b981, emissive: 0x047857, desc: '컴퓨터 해커 아키텍처 스킨', owned: false },
+                { id: 'skin-gold', name: '럭셔리 골드', cost: 100, hex: 0xf59e0b, emissive: 0xb45309, desc: '진정한 챔피언의 황금 에너지', owned: false }
+            ],
+            accessory: [
+                { id: 'acc-none', name: '장식 없음', cost: 0, desc: '순정 기본 구체 디자인', owned: true },
+                { id: 'acc-catears', name: '사이버 고양이 귀', cost: 35, desc: '정교한 네온 삼각 귀 장식', owned: false },
+                { id: 'acc-halo', name: '엔젤 라이트 링', cost: 50, desc: '머리 위를 부유하는 천사의 링', owned: false },
+                { id: 'acc-crown', name: '사이버 네온 크라운', cost: 80, desc: '명예로운 자를 위한 네온 왕관', owned: false },
+                { id: 'acc-wizard', name: '미니 메이지 해트', cost: 110, desc: '사이버 마법 전사 고깔모자', owned: false }
+            ],
+            trail: [
+                { id: 'trail-none', name: '기본 흔적 없음', cost: 0, desc: '공기 이펙트만 적용', owned: true },
+                { id: 'trail-spark', name: '네온 파티클 스파크', cost: 45, desc: '이동 및 착지 시 링 잔상 배출', owned: false },
+                { id: 'trail-glow', name: '이중 루프 글로우', cost: 70, desc: '점프할 때 바닥에 화려한 원 폭발', owned: false }
+            ]
+        };
+
+        let playerCustomState = {
+            coins: 0,
+            activeSkin: 'skin-cyan',
+            activeAccessory: 'acc-none',
+            activeTrail: 'trail-none',
+            unlockedItems: ['skin-cyan', 'acc-none', 'trail-none']
+        };
+
+        function loadPlayerData() {
+            const stored = localStorage.getItem('cyberjump3d_save_endless');
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    playerCustomState = { ...playerCustomState, ...parsed };
+                    
+                    for (let tab in SHOP_ITEMS) {
+                        SHOP_ITEMS[tab].forEach(item => {
+                            if (playerCustomState.unlockedItems.includes(item.id)) {
+                                item.owned = true;
+                            }
+                        });
+                    }
+                } catch (e) {
+                    console.error('세이브 데이터 읽기 오류:', e);
+                }
+            }
+            document.getElementById("ui-coins").innerText = playerCustomState.coins;
+            document.getElementById("shop-coins").innerText = playerCustomState.coins;
+        }
+
+        function savePlayerData() {
+            localStorage.setItem('cyberjump3d_save_endless', JSON.stringify(playerCustomState));
+            document.getElementById("ui-coins").innerText = playerCustomState.coins;
+            document.getElementById("shop-coins").innerText = playerCustomState.coins;
+        }
+
+        let currentShopTab = 'skin';
+        function changeShopTab(tabName) {
+            currentShopTab = tabName;
+            ['tab-skin', 'tab-accessory', 'tab-trail'].forEach(id => {
+                const el = document.getElementById(id);
+                el.className = "flex-1 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition-all";
+            });
+            document.getElementById(`tab-${tabName}`).className = "flex-1 py-2 text-xs font-bold rounded-lg bg-purple-600 text-white transition-all";
+            renderShopItems();
+        }
+
+        function renderShopItems() {
+            const container = document.getElementById("shop-items-container");
+            container.innerHTML = '';
+            
+            const list = SHOP_ITEMS[currentShopTab];
+            list.forEach(item => {
+                const isEquipped = (currentShopTab === 'skin' && playerCustomState.activeSkin === item.id) ||
+                                  (currentShopTab === 'accessory' && playerCustomState.activeAccessory === item.id) ||
+                                  (currentShopTab === 'trail' && playerCustomState.activeTrail === item.id);
+                
+                const card = document.createElement("div");
+                card.className = `p-4 rounded-2xl border transition-all flex flex-col justify-between gap-3 text-left ${isEquipped ? 'bg-purple-950/40 border-purple-500/70' : 'bg-slate-950/80 border-slate-800 hover:border-slate-700'}`;
+                
+                let buttonStyle = "";
+                let buttonText = "";
+                let costTag = "";
+
+                if (isEquipped) {
+                    buttonStyle = "bg-purple-600 text-white pointer-events-none";
+                    buttonText = "장착 중";
+                } else if (item.owned) {
+                    buttonStyle = "bg-slate-800 hover:bg-slate-700 text-slate-200";
+                    buttonText = "장착하기";
+                } else {
+                    buttonStyle = playerCustomState.coins >= item.cost ? "bg-amber-600 hover:bg-amber-500 text-slate-950" : "bg-slate-900 text-slate-500 cursor-not-allowed";
+                    buttonText = `${item.cost} 🪙 구매`;
+                }
+
+                if (!item.owned) {
+                    costTag = `<span class="text-xs bg-amber-950/60 border border-amber-500/30 text-amber-400 px-2 py-0.5 rounded-full font-bold">🪙 ${item.cost}</span>`;
+                } else {
+                    costTag = `<span class="text-xs bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 px-2 py-0.5 rounded-full font-bold">소유함</span>`;
+                }
+
+                card.innerHTML = `
+                    <div class="flex flex-col gap-1">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-slate-200 text-sm md:text-base">${item.name}</span>
+                            ${costTag}
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1 leading-normal font-medium">${item.desc}</p>
+                    </div>
+                    <button class="w-full py-2 rounded-xl text-xs font-bold transition-all ${buttonStyle}">${buttonText}</button>
+                `;
+
+                const btn = card.querySelector("button");
+                btn.onclick = () => {
+                    if (isEquipped) return;
+                    if (item.owned) {
+                        equipItem(currentShopTab, item.id);
+                    } else if (playerCustomState.coins >= item.cost) {
+                        playerCustomState.coins -= item.cost;
+                        item.owned = true;
+                        playerCustomState.unlockedItems.push(item.id);
+                        equipItem(currentShopTab, item.id);
+                        playSynthSound('checkpoint');
+                    } else {
+                        playSynthSound('death');
+                    }
+                };
+
+                container.appendChild(card);
+            });
+        }
+
+        function equipItem(category, itemId) {
+            if (category === 'skin') {
+                playerCustomState.activeSkin = itemId;
+                applyPlayerVisualSkin();
+            } else if (category === 'accessory') {
+                playerCustomState.activeAccessory = itemId;
+                applyPlayerVisualAccessory();
+            } else if (category === 'trail') {
+                playerCustomState.activeTrail = itemId;
+            }
+            savePlayerData();
+            renderShopItems();
+            triggerToast("캐릭터에 아이템이 적용되었습니다!");
+        }
+
+        function applyPlayerVisualSkin() {
+            if (!playerMesh) return;
+            const currentItem = SHOP_ITEMS.skin.find(s => s.id === playerCustomState.activeSkin);
+            if (currentItem) {
+                playerMesh.material.color.setHex(currentItem.hex);
+                playerMesh.material.emissive.setHex(currentItem.emissive);
+            }
+        }
+
+        let currentAccessoryMesh = null;
+        function applyPlayerVisualAccessory() {
+            if (!playerMesh) return;
+            if (currentAccessoryMesh) {
+                playerMesh.remove(currentAccessoryMesh);
+                currentAccessoryMesh = null;
+            }
+
+            const activeAcc = playerCustomState.activeAccessory;
+            if (activeAcc === 'acc-none') return;
+
+            const group = new THREE.Group();
+
+            if (activeAcc === 'acc-catears') {
+                const earGeo = new THREE.ConeGeometry(0.18, 0.4, 3);
+                const earMat = new THREE.MeshStandardMaterial({ color: 0x222530, roughness: 0.5 });
+                
+                const earLeft = new THREE.Mesh(earGeo, earMat);
+                earLeft.position.set(-0.25, 0.4, 0);
+                earLeft.rotation.z = 0.25;
+                earLeft.rotation.y = 0.5;
+
+                const earRight = earLeft.clone();
+                earRight.position.x = 0.25;
+                earRight.rotation.z = -0.25;
+                earRight.rotation.y = -0.5;
+
+                const innerGeo = new THREE.ConeGeometry(0.1, 0.28, 3);
+                const innerMat = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+                const innerL = new THREE.Mesh(innerGeo, innerMat);
+                innerL.position.set(0, 0, 0.05);
+                earLeft.add(innerL);
+
+                const innerR = innerL.clone();
+                earRight.add(innerR);
+
+                group.add(earLeft);
+                group.add(earRight);
+            } 
+            else if (activeAcc === 'acc-halo') {
+                const haloGeo = new THREE.TorusGeometry(0.35, 0.05, 8, 32);
+                const haloMat = new THREE.MeshBasicMaterial({ color: 0xffff80 });
+                const halo = new THREE.Mesh(haloGeo, haloMat);
+                halo.position.set(0, 0.65, 0);
+                halo.rotation.x = Math.PI / 2;
+                group.add(halo);
+            } 
+            else if (activeAcc === 'acc-crown') {
+                const crownMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9, roughness: 0.1 });
+                const baseCyl = new THREE.CylinderGeometry(0.25, 0.25, 0.15, 12, 1, true);
+                const base = new THREE.Mesh(baseCyl, crownMat);
+                base.position.set(0, 0.45, 0);
+
+                for (let i = 0; i < 6; i++) {
+                    const spikeGeo = new THREE.ConeGeometry(0.06, 0.18, 4);
+                    const spike = new THREE.Mesh(spikeGeo, crownMat);
+                    const angle = (i / 6) * Math.PI * 2;
+                    spike.position.set(Math.cos(angle) * 0.24, 0.15, Math.sin(angle) * 0.24);
+                    base.add(spike);
+                }
+                group.add(base);
+            } 
+            else if (activeAcc === 'acc-wizard') {
+                const hatMat = new THREE.MeshStandardMaterial({ color: 0x4c1d95, roughness: 0.6 });
+                const rimGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.02, 16);
+                const rim = new THREE.Mesh(rimGeo, hatMat);
+                rim.position.set(0, 0.45, 0);
+
+                const coneGeo = new THREE.ConeGeometry(0.24, 0.55, 16);
+                const cone = new THREE.Mesh(coneGeo, hatMat);
+                cone.position.set(0, 0.28, 0);
+                rim.add(cone);
+
+                const bandGeo = new THREE.CylinderGeometry(0.23, 0.25, 0.06, 16);
+                const bandMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+                const band = new THREE.Mesh(bandGeo, bandMat);
+                band.position.set(0, 0.06, 0);
+                rim.add(band);
+
+                group.add(rim);
+            }
+
+            currentAccessoryMesh = group;
+            playerMesh.add(currentAccessoryMesh);
+        }
+    </script>
+
+    <script>
+        // Infinite stage maps generator
+        function generateProceduralMap(stageNum) {
+            // Scale number of platforms between 10 and 30 depending on stage difficulty
+            const numPlatforms = 10 + Math.min(stageNum * 2, 20);
+            const platforms = [];
+            const coins = [];
+
+            // Starting platform (safe base)
+            platforms.push({ x: 0, y: 0, z: 0, w: 3, h: 1, d: 3, type: "normal" });
+
+            let curX = 0;
+            let curY = 0;
+            let curZ = 0;
+
+            for (let i = 1; i < numPlatforms; i++) {
+                // Jumps get slightly longer and more vertical with higher stages
+                const jumpDistZ = -(4.6 + Math.min(stageNum * 0.08, 1.8) + Math.random() * 1.5);
+                const jumpDistX = (Math.random() - 0.5) * (6.0 + Math.min(stageNum * 0.1, 2.0));
+                const jumpDistY = (Math.random() - 0.3) * (1.6 + Math.min(stageNum * 0.05, 0.6));
+
+                curX += jumpDistX;
+                curY += jumpDistY;
+                curZ += jumpDistZ;
+
+                // Restrict excessive horizontal divergence
+                if (Math.abs(curX) > 14) {
+                    curX = Math.sign(curX) * 11;
+                }
+
+                let type = "normal";
+                let moveSpec = null;
+                let flickerRate = 2200;
+
+                const rand = Math.random();
+
+                // Inject checkpoints every 6 platforms
+                if (i > 0 && i % 6 === 0 && i < numPlatforms - 1) {
+                    type = "checkpoint";
+                } else if (i === numPlatforms - 1) {
+                    type = "goal";
+                } else {
+                    // Increase frequency of tricky mechanics in deeper stages
+                    const movingChance = Math.min(0.12 + stageNum * 0.04, 0.50);
+                    const flickerChance = Math.min(0.10 + stageNum * 0.03, 0.35);
+
+                    if (rand < movingChance) {
+                        type = "moving";
+                        const axis = Math.random() > 0.5 ? "x" : "z";
+                        const speed = 1.6 + Math.min(stageNum * 0.12, 3.5) + Math.random() * 1.2;
+                        if (axis === "x") {
+                            moveSpec = { axis: "x", min: curX - 3, max: curX + 3, speed: speed, current: curX };
+                        } else {
+                            moveSpec = { axis: "z", min: curZ - 2.5, max: curZ + 2.5, speed: speed, current: curZ };
+                        }
+                    } else if (rand < movingChance + flickerChance) {
+                        type = "flicker";
+                        flickerRate = Math.max(900, 2400 - stageNum * 120);
+                    }
+                }
+
+                // Platforms shrink as level gets higher
+                const w = (type === "checkpoint" || type === "goal") ? 3.0 : Math.max(1.1, 2.3 - Math.min(stageNum * 0.05, 0.9) + Math.random() * 0.4);
+                const h = 0.6 + Math.random() * 0.4;
+                const d = (type === "checkpoint" || type === "goal") ? 3.0 : Math.max(1.1, 2.3 - Math.min(stageNum * 0.05, 0.9) + Math.random() * 0.4);
+
+                const platformObj = {
+                    x: curX,
+                    y: curY,
+                    z: curZ,
+                    w: parseFloat(w.toFixed(1)),
+                    h: parseFloat(h.toFixed(1)),
+                    d: parseFloat(d.toFixed(1)),
+                    type: type
+                };
+
+                if (type === "moving") platformObj.move = moveSpec;
+                if (type === "flicker") {
+                    platformObj.flickerRate = flickerRate;
+                    platformObj.state = Math.random() > 0.5;
+                    platformObj.lastChange = 0;
+                }
+
+                platforms.push(platformObj);
+
+                // Coin generation algorithm
+                if (type === "normal" && Math.random() > 0.45) {
+                    coins.push({ x: curX, y: curY + 1.2, z: curZ });
+                } else if (type === "moving" && Math.random() > 0.3) {
+                    coins.push({ x: curX, y: curY + 1.2, z: curZ });
+                }
+
+                // Hazard spawning logic on normal platforms (higher levels = more hazardous obstacles)
+                if (type === "normal" && i > 2 && Math.random() < Math.min(0.08 + stageNum * 0.03, 0.38)) {
+                    const hazardType = Math.random() > 0.6 ? "rotor" : "spike";
+                    if (hazardType === "spike") {
+                        platforms.push({
+                            x: curX,
+                            y: curY + h/2 + 0.4,
+                            z: curZ,
+                            w: 0.5,
+                            h: 0.8,
+                            d: 0.5,
+                            type: "hazard",
+                            name: "spike"
+                        });
+                    } else {
+                        platforms.push({
+                            x: curX,
+                            y: curY + h/2 + 0.3,
+                            z: curZ,
+                            w: 3.5,
+                            h: 0.3,
+                            d: 0.3,
+                            type: "hazard",
+                            name: "rotor",
+                            rotSpeed: 1.1 + Math.min(stageNum * 0.15, 2.5)
+                        });
+                    }
+                }
+            }
+
+            return {
+                start: { x: 0, y: 1.5, z: 0 },
+                platforms: platforms,
+                coins: coins
+            };
+        }
+    </script>
+
+    <script>
+        const GRAVITY = -18.5;
+        const TERMINAL_VELOCITY = -45;
+        const MOVE_SPEED = 7.5;
+        const JUMP_FORCE = 8.5;
+        const FRICTION = 9.0;
+
+        let currentStage = 1;
+        let deaths = 0;
+        let gameTime = 0;
+        let timerInterval = null;
+        let isPlaying = false;
+
+        let scene, camera, renderer;
+        let playerMesh, shadowMesh;
+        const keys = {};
+
+        const player = {
+            position: new THREE.Vector3(0, 3, 0),
+            velocity: new THREE.Vector3(0, 0, 0),
+            radius: 0.5,
+            height: 1.0,
+            onGround: false,
+            checkpoint: new THREE.Vector3(0, 3, 0)
+        };
+
+        let platforms = [];
+        let checkpoints = [];
+        let portal = null;
+        let hazardObstacles = [];
+        let coinEntities = [];
+
+        let trailParticles = [];
+
+        let cameraAngleX = Math.PI / 2;
+        let cameraAngleY = 0.4;
+        const cameraDistance = 7;
+        let isDraggingCamera = false;
+        let prevMouseX = 0;
+        let prevMouseY = 0;
+
+        let touchStartPos = null;
+        let touchMovePos = null;
+        let activeJoystickVector = { x: 0, y: 0 };
+
+        function initEngine() {
+            const canvas = document.getElementById("game-canvas");
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x0a0f1d, 0.015);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.setClearColor(0x020617, 1);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.25);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xa855f7, 0.85);
+            dirLight.position.set(10, 20, 15);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
+            dirLight.shadow.camera.near = 0.5;
+            dirLight.shadow.camera.far = 60;
+            const d = 15;
+            dirLight.shadow.camera.left = -d;
+            dirLight.shadow.camera.right = d;
+            dirLight.shadow.camera.top = d;
+            dirLight.shadow.camera.bottom = -d;
+            scene.add(dirLight);
+
+            const fillLight = new THREE.DirectionalLight(0x06b6d4, 0.55);
+            fillLight.position.set(-10, 10, -10);
+            scene.add(fillLight);
+
+            const gridHelper = new THREE.GridHelper(200, 100, 0x1e1b4b, 0x0f172a);
+            gridHelper.position.y = -5;
+            scene.add(gridHelper);
+
+            const playerGeo = new THREE.SphereGeometry(player.radius, 16, 16);
+            const playerMat = new THREE.MeshStandardMaterial({
+                color: 0x06b6d4,
+                emissive: 0x0891b2,
+                roughness: 0.15,
+                metalness: 0.85
+            });
+            playerMesh = new THREE.Mesh(playerGeo, playerMat);
+            playerMesh.castShadow = true;
+            playerMesh.receiveShadow = false;
+            scene.add(playerMesh);
+
+            loadPlayerData();
+            applyPlayerVisualSkin();
+            applyPlayerVisualAccessory();
+
+            const shadowGeo = new THREE.RingGeometry(0.01, player.radius * 0.9, 16);
+            const shadowMat = new THREE.MeshBasicMaterial({
+                color: 0x000000,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.65
+            });
+            shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+            shadowMesh.rotation.x = Math.PI / 2;
+            scene.add(shadowMesh);
+
+            buildStage(currentStage);
+
+            window.addEventListener('resize', onWindowResize, false);
+            setupInputListeners();
+        }
+
+        function buildStage(stageNum) {
+            platforms.forEach(p => scene.remove(p.mesh));
+            checkpoints.forEach(c => {
+                scene.remove(c.mesh);
+                if (c.flagMesh) scene.remove(c.flagMesh);
+            });
+            hazardObstacles.forEach(h => scene.remove(h.mesh));
+            coinEntities.forEach(c => scene.remove(c.mesh));
+            if (portal) {
+                scene.remove(portal.mesh);
+                scene.remove(portal.light);
+            }
+
+            platforms = [];
+            checkpoints = [];
+            hazardObstacles = [];
+            coinEntities = [];
+            portal = null;
+
+            // Generate procedural level maps instead of reading static data
+            const mapData = generateProceduralMap(stageNum);
+
+            player.position.copy(mapData.start);
+            player.checkpoint.copy(mapData.start);
+            player.velocity.set(0, 0, 0);
+
+            mapData.platforms.forEach(pSpec => {
+                if (pSpec.type === 'normal' || pSpec.type === 'moving' || pSpec.type === 'flicker') {
+                    const geo = new THREE.BoxGeometry(pSpec.w, pSpec.h, pSpec.d);
+                    
+                    let pColor = 0x3b82f6; 
+                    let pEmissive = 0x1d4ed8;
+                    if (pSpec.type === 'moving') {
+                        pColor = 0xeab308; 
+                        pEmissive = 0xa16207;
+                    } else if (pSpec.type === 'flicker') {
+                        pColor = 0xa855f7; 
+                        pEmissive = 0x6b21a8;
+                    }
+
+                    const mat = new THREE.MeshStandardMaterial({
+                        color: pColor,
+                        emissive: pEmissive,
+                        roughness: 0.3,
+                        metalness: 0.5,
+                        transparent: true,
+                        opacity: 1.0
+                    });
+                    const mesh = new THREE.Mesh(geo, mat);
+                    mesh.position.set(pSpec.x, pSpec.y, pSpec.z);
+                    mesh.receiveShadow = true;
+                    mesh.castShadow = true;
+                    scene.add(mesh);
+
+                    platforms.push({
+                        mesh: mesh,
+                        spec: pSpec
+                    });
+                } 
+                else if (pSpec.type === 'checkpoint') {
+                    const baseGeo = new THREE.BoxGeometry(pSpec.w, pSpec.h, pSpec.d);
+                    const baseMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5 });
+                    const baseMesh = new THREE.Mesh(baseGeo, baseMat);
+                    baseMesh.position.set(pSpec.x, pSpec.y, pSpec.z);
+                    baseMesh.receiveShadow = true;
+                    scene.add(baseMesh);
+                    platforms.push({ mesh: baseMesh, spec: pSpec });
+
+                    const poleGeo = new THREE.CylinderGeometry(0.08, 0.08, 2, 8);
+                    const poleMat = new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x047857 });
+                    const poleMesh = new THREE.Mesh(poleGeo, poleMat);
+                    poleMesh.position.set(pSpec.x, pSpec.y + 1, pSpec.z);
+                    poleMesh.castShadow = true;
+                    scene.add(poleMesh);
+
+                    const flagGeo = new THREE.BoxGeometry(0.6, 0.4, 0.05);
+                    const flagMat = new THREE.MeshBasicMaterial({ color: pSpec.saved ? 0x10b981 : 0xef4444 });
+                    const flagMesh = new THREE.Mesh(flagGeo, flagMat);
+                    flagMesh.position.set(pSpec.x + 0.3, pSpec.y + 1.8, pSpec.z);
+                    scene.add(flagMesh);
+
+                    checkpoints.push({
+                        mesh: poleMesh,
+                        flagMesh: flagMesh,
+                        spec: pSpec
+                    });
+                }
+                else if (pSpec.type === 'goal') {
+                    const baseGeo = new THREE.BoxGeometry(pSpec.w, pSpec.h, pSpec.d);
+                    const baseMat = new THREE.MeshStandardMaterial({ color: 0xca8a04, roughness: 0.2, metalness: 0.8 });
+                    const baseMesh = new THREE.Mesh(baseGeo, baseMat);
+                    baseMesh.position.set(pSpec.x, pSpec.y, pSpec.z);
+                    baseMesh.receiveShadow = true;
+                    scene.add(baseMesh);
+                    platforms.push({ mesh: baseMesh, spec: pSpec });
+
+                    const portalGeo = new THREE.TorusGeometry(1.2, 0.15, 16, 100);
+                    const portalMat = new THREE.MeshStandardMaterial({
+                        color: 0xeab308,
+                        emissive: 0xd97706,
+                        roughness: 0.1
+                    });
+                    const portalMesh = new THREE.Mesh(portalGeo, portalMat);
+                    portalMesh.position.set(pSpec.x, pSpec.y + 1.8, pSpec.z);
+                    portalMesh.rotation.y = Math.PI / 4; 
+                    scene.add(portalMesh);
+
+                    const portalLight = new THREE.PointLight(0xeab308, 1.5, 8);
+                    portalLight.position.set(pSpec.x, pSpec.y + 2, pSpec.z);
+                    scene.add(portalLight);
+
+                    portal = {
+                        mesh: portalMesh,
+                        light: portalLight,
+                        spec: pSpec
+                    };
+                }
+                else if (pSpec.type === 'hazard') {
+                    if (pSpec.name === 'spike') {
+                        const coneGeo = new THREE.ConeGeometry(pSpec.w, pSpec.h, 4);
+                        const coneMat = new THREE.MeshStandardMaterial({ color: 0xe11d48, emissive: 0x9f1239, metalness: 0.5 });
+                        const coneMesh = new THREE.Mesh(coneGeo, coneMat);
+                        coneMesh.position.set(pSpec.x, pSpec.y, pSpec.z);
+                        coneMesh.castShadow = true;
+                        scene.add(coneMesh);
+
+                        hazardObstacles.push({
+                            mesh: coneMesh,
+                            spec: pSpec
+                        });
+                    }
+                    else if (pSpec.name === 'rotor') {
+                        const barGeo = new THREE.BoxGeometry(pSpec.w, pSpec.h, pSpec.d);
+                        const barMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e, emissive: 0xbe123c });
+                        const barMesh = new THREE.Mesh(barGeo, barMat);
+                        barMesh.position.set(pSpec.x, pSpec.y, pSpec.z);
+                        barMesh.castShadow = true;
+                        scene.add(barMesh);
+
+                        hazardObstacles.push({
+                            mesh: barMesh,
+                            spec: pSpec
+                        });
+                    }
+                }
+            });
+
+            if (mapData.coins) {
+                const coinGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.08, 16);
+                const coinMat = new THREE.MeshStandardMaterial({
+                    color: 0xf59e0b,
+                    emissive: 0xd97706,
+                    metalness: 0.9,
+                    roughness: 0.1
+                });
+
+                mapData.coins.forEach((cPos, idx) => {
+                    const cMesh = new THREE.Mesh(coinGeo, coinMat);
+                    cMesh.position.set(cPos.x, cPos.y, cPos.z);
+                    cMesh.rotation.x = Math.PI / 2; 
+                    cMesh.castShadow = true;
+                    scene.add(cMesh);
+
+                    coinEntities.push({
+                        mesh: cMesh,
+                        id: `coin-${stageNum}-${idx}`,
+                        collected: false
+                    });
+                });
+            }
+
+            updateStageHUD();
+        }
+
+        function createJumpTrailParticles() {
+            if (playerCustomState.activeTrail === 'trail-none') return;
+            
+            const colorSpec = playerCustomState.activeTrail === 'trail-spark' ? 0x00ffff : 0xff00ff;
+            const count = playerCustomState.activeTrail === 'trail-spark' ? 6 : 1;
+
+            if (playerCustomState.activeTrail === 'trail-spark') {
+                for (let i = 0; i < count; i++) {
+                    const size = Math.random() * 0.12 + 0.05;
+                    const pGeo = new THREE.BoxGeometry(size, size, size);
+                    const pMat = new THREE.MeshBasicMaterial({ color: colorSpec, transparent: true, opacity: 0.8 });
+                    const pMesh = new THREE.Mesh(pGeo, pMat);
+                    
+                    pMesh.position.copy(player.position);
+                    pMesh.position.x += (Math.random() - 0.5) * 0.4;
+                    pMesh.position.y -= 0.3;
+                    pMesh.position.z += (Math.random() - 0.5) * 0.4;
+                    
+                    scene.add(pMesh);
+                    
+                    trailParticles.push({
+                        mesh: pMesh,
+                        vel: new THREE.Vector3((Math.random() - 0.5) * 1.5, -Math.random() * 2, (Math.random() - 0.5) * 1.5),
+                        life: 1.0,
+                        decay: Math.random() * 2.0 + 1.5
+                    });
+                }
+            } 
+            else if (playerCustomState.activeTrail === 'trail-glow') {
+                const rGeo = new THREE.RingGeometry(0.1, 0.4, 20);
+                const rMat = new THREE.MeshBasicMaterial({ color: colorSpec, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+                const rMesh = new THREE.Mesh(rGeo, rMat);
+                rMesh.position.copy(player.position);
+                rMesh.position.y -= 0.4;
+                rMesh.rotation.x = Math.PI / 2;
+                scene.add(rMesh);
+
+                trailParticles.push({
+                    mesh: rMesh,
+                    vel: new THREE.Vector3(0, 0, 0),
+                    scaleSpeed: 4.0,
+                    life: 1.0,
+                    decay: 3.0,
+                    isRing: true
+                });
+            }
+        }
+
+        function setupInputListeners() {
+            window.addEventListener('keydown', e => {
+                keys[e.code] = true;
+                if (e.code === 'Space') {
+                    e.preventDefault(); 
+                }
+            });
+            window.addEventListener('keyup', e => {
+                keys[e.code] = false;
+            });
+
+            window.addEventListener('mousedown', e => {
+                isDraggingCamera = true;
+                prevMouseX = e.clientX;
+                prevMouseY = e.clientY;
+            });
+            window.addEventListener('mousemove', e => {
+                if (!isDraggingCamera) return;
+                const deltaX = e.clientX - prevMouseX;
+                const deltaY = e.clientY - prevMouseY;
+                cameraAngleX -= deltaX * 0.007;
+                cameraAngleY = Math.max(-0.2, Math.min(1.2, cameraAngleY + deltaY * 0.007));
+                prevMouseX = e.clientX;
+                prevMouseY = e.clientY;
+            });
+            window.addEventListener('mouseup', () => {
+                isDraggingCamera = false;
+            });
+
+            window.addEventListener('touchstart', e => {
+                if (e.touches.length === 1) {
+                    const touch = e.touches[0];
+                    const rectJoy = document.getElementById("touch-joy-container").getBoundingClientRect();
+                    const rectJump = document.getElementById("touch-jump").getBoundingClientRect();
+                    const tx = touch.clientX;
+                    const ty = touch.clientY;
+
+                    const inJoy = tx >= rectJoy.left && tx <= rectJoy.right && ty >= rectJoy.top && ty <= rectJoy.bottom;
+                    const inJump = tx >= rectJump.left && tx <= rectJump.right && ty >= rectJump.top && ty <= rectJump.bottom;
+
+                    if (!inJoy && !inJump) {
+                        isDraggingCamera = true;
+                        prevMouseX = tx;
+                        prevMouseY = ty;
+                    }
+                }
+            }, { passive: true });
+
+            window.addEventListener('touchmove', e => {
+                if (isDraggingCamera && e.touches.length === 1) {
+                    const touch = e.touches[0];
+                    const deltaX = touch.clientX - prevMouseX;
+                    const deltaY = touch.clientY - prevMouseY;
+                    cameraAngleX -= deltaX * 0.007;
+                    cameraAngleY = Math.max(-0.2, Math.min(1.2, cameraAngleY + deltaY * 0.007));
+                    prevMouseX = touch.clientX;
+                    prevMouseY = touch.clientY;
+                }
+            }, { passive: true });
+
+            window.addEventListener('touchend', () => {
+                isDraggingCamera = false;
+            });
+
+            const joyContainer = document.getElementById("touch-joy-container");
+            const joyStick = document.getElementById("touch-joy-stick");
+            const containerRadius = 56; 
+            const stickRadius = 24;
+
+            joyContainer.addEventListener('touchstart', e => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = joyContainer.getBoundingClientRect();
+                touchStartPos = {
+                    x: rect.left + containerRadius,
+                    y: rect.top + containerRadius
+                };
+                updateJoystick(touch);
+            });
+
+            joyContainer.addEventListener('touchmove', e => {
+                e.preventDefault();
+                if (!touchStartPos) return;
+                const touch = e.touches[0];
+                updateJoystick(touch);
+            });
+
+            function updateJoystick(touch) {
+                const dx = touch.clientX - touchStartPos.x;
+                const dy = touch.clientY - touchStartPos.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const maxDist = containerRadius - stickRadius;
+
+                let finalX = dx;
+                let finalY = dy;
+
+                if (dist > maxDist) {
+                    finalX = (dx / dist) * maxDist;
+                    finalY = (dy / dist) * maxDist;
+                }
+
+                joyStick.style.left = `calc(50% - ${stickRadius}px + ${finalX}px)`;
+                joyStick.style.top = `calc(50% - ${stickRadius}px + ${finalY}px)`;
+
+                activeJoystickVector.x = finalX / maxDist;
+                activeJoystickVector.y = finalY / maxDist;
+            }
+
+            joyContainer.addEventListener('touchend', () => {
+                touchStartPos = null;
+                joyStick.style.left = `calc(50% - ${stickRadius}px)`;
+                joyStick.style.top = `calc(50% - ${stickRadius}px)`;
+                activeJoystickVector = { x: 0, y: 0 };
+            });
+
+            const jumpBtn = document.getElementById("touch-jump");
+            jumpBtn.addEventListener('touchstart', e => {
+                e.preventDefault();
+                keys['Space'] = true;
+            });
+            jumpBtn.addEventListener('touchend', e => {
+                e.preventDefault();
+                keys['Space'] = false;
+            });
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function checkDeviceResolution() {
+            const mobileHud = document.getElementById("mobile-controls");
+            if (window.innerWidth < 1024 || 'ontouchstart' in window) {
+                mobileHud.classList.remove("hidden");
+            } else {
+                mobileHud.classList.add("hidden");
+            }
+        }
+
+        function updatePhysics(deltaTime) {
+            if (deltaTime > 0.1) deltaTime = 0.1;
+
+            let moveX = 0;
+            let moveZ = 0;
+
+            if (keys['KeyW'] || keys['ArrowUp']) moveZ -= 1;
+            if (keys['KeyS'] || keys['ArrowDown']) moveZ += 1;
+            if (keys['KeyA'] || keys['ArrowLeft']) moveX -= 1;
+            if (keys['KeyD'] || keys['ArrowRight']) moveX += 1;
+
+            if (Math.abs(activeJoystickVector.x) > 0.1 || Math.abs(activeJoystickVector.y) > 0.1) {
+                moveX = activeJoystickVector.x;
+                moveZ = activeJoystickVector.y;
+            }
+
+            const camForward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            camForward.y = 0;
+            camForward.normalize();
+            const camRight = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+            camRight.y = 0;
+            camRight.normalize();
+
+            const moveDir = new THREE.Vector3();
+            moveDir.addScaledVector(camForward, -moveZ);
+            moveDir.addScaledVector(camRight, moveX);
+            if (moveDir.lengthSq() > 1) moveDir.normalize();
+
+            const targetVelocityX = moveDir.x * MOVE_SPEED;
+            const targetVelocityZ = moveDir.z * MOVE_SPEED;
+
+            player.velocity.x += (targetVelocityX - player.velocity.x) * FRICTION * deltaTime;
+            player.velocity.z += (targetVelocityZ - player.velocity.z) * FRICTION * deltaTime;
+
+            player.velocity.y += GRAVITY * deltaTime;
+            if (player.velocity.y < TERMINAL_VELOCITY) player.velocity.y = TERMINAL_VELOCITY;
+
+            if (keys['Space'] && player.onGround) {
+                player.velocity.y = JUMP_FORCE;
+                player.onGround = false;
+                playSynthSound('jump');
+                createJumpTrailParticles();
+            }
+
+            const lastPos = player.position.clone();
+            player.position.addScaledVector(player.velocity, deltaTime);
+
+            player.onGround = false;
+            let stoodOnPlatform = null;
+
+            platforms.forEach(p => {
+                const spec = p.spec;
+                const mesh = p.mesh;
+
+                if (spec.type === 'flicker' && !spec.state) return;
+
+                const minX = mesh.position.x - spec.w / 2;
+                const maxX = mesh.position.x + spec.w / 2;
+                const minZ = mesh.position.z - spec.d / 2;
+                const maxZ = mesh.position.z + spec.d / 2;
+                const minY = mesh.position.y - spec.h / 2;
+                const maxY = mesh.position.y + spec.h / 2;
+
+                const withinHorizontal = (player.position.x + player.radius > minX && player.position.x - player.radius < maxX) &&
+                                         (player.position.z + player.radius > minZ && player.position.z - player.radius < maxZ);
+
+                if (withinHorizontal) {
+                    if (lastPos.y - player.radius >= maxY - 0.1 && player.position.y - player.radius <= maxY) {
+                        player.position.y = maxY + player.radius;
+                        player.velocity.y = 0;
+                        player.onGround = true;
+                        stoodOnPlatform = p;
+                    }
+                    else if (lastPos.y + player.radius <= minY + 0.1 && player.position.y + player.radius >= minY) {
+                        player.position.y = minY - player.radius;
+                        player.velocity.y = 0;
+                    }
+                }
+            });
+
+            if (stoodOnPlatform && stoodOnPlatform.spec.type === 'moving' && stoodOnPlatform.spec.move) {
+                const spec = stoodOnPlatform.spec;
+                const deltaMove = spec.move.deltaActual || 0;
+                if (spec.move.axis === 'x') {
+                    player.position.x += deltaMove;
+                } else if (spec.move.axis === 'z') {
+                    player.position.z += deltaMove;
+                }
+            }
+
+            hazardObstacles.forEach(h => {
+                const spec = h.spec;
+                const mesh = h.mesh;
+
+                if (spec.name === 'spike') {
+                    const dist = player.position.distanceTo(mesh.position);
+                    if (dist < player.radius + spec.w * 0.7) {
+                        triggerRespawn();
+                    }
+                }
+                else if (spec.name === 'rotor') {
+                    const localPlayer = player.position.clone().sub(mesh.position);
+                    localPlayer.applyAxisAngle(new THREE.Vector3(0, 1, 0), -mesh.rotation.y);
+                    
+                    const minX = -spec.w / 2;
+                    const maxX = spec.w / 2;
+                    const minZ = -spec.d / 2;
+                    const maxZ = spec.d / 2;
+                    const minY = -spec.h / 2;
+                    const maxY = spec.h / 2;
+
+                    const hit = (localPlayer.x + player.radius > minX && localPlayer.x - player.radius < maxX) &&
+                                (localPlayer.z + player.radius > minZ && localPlayer.z - player.radius < maxZ) &&
+                                (localPlayer.y + player.radius > minY && localPlayer.y - player.radius < maxY);
+                    
+                    if (hit) {
+                        triggerRespawn();
+                    }
+                }
+            });
+
+            coinEntities.forEach(coin => {
+                if (coin.collected) return;
+                const dist = player.position.distanceTo(coin.mesh.position);
+                if (dist < (player.radius + 0.35)) {
+                    coin.collected = true;
+                    scene.remove(coin.mesh);
+                    playerCustomState.coins += 5; 
+                    savePlayerData();
+                    playSynthSound('coin');
+                }
+            });
+
+            checkpoints.forEach(cp => {
+                const spec = cp.spec;
+                const dist = player.position.distanceTo(cp.mesh.position);
+                if (dist < 2.0 && !spec.saved) {
+                    spec.saved = true;
+                    checkpoints.forEach(other => {
+                        if (other !== cp) other.spec.saved = false;
+                    });
+                    player.checkpoint.copy(cp.mesh.position).add(new THREE.Vector3(0, 1.5, 0));
+                    triggerToast("체크포인트 세이브 완료!");
+                    playSynthSound('checkpoint');
+                    cp.flagMesh.material.color.setHex(0x10b981);
+                }
+                cp.flagMesh.rotation.y += 0.02;
+            });
+
+            if (portal) {
+                const dist = player.position.distanceTo(portal.mesh.position);
+                if (dist < 1.8) {
+                    triggerStageClear();
+                }
+                portal.mesh.rotation.z += 0.03;
+            }
+
+            if (player.position.y < -12) {
+                triggerRespawn();
+            }
+
+            playerMesh.position.copy(player.position);
+            updateShadowProjector();
+        }
+
+        function updateShadowProjector() {
+            let hitY = -200;
+            platforms.forEach(p => {
+                const spec = p.spec;
+                if (spec.type === 'flicker' && !spec.state) return;
+
+                const minX = p.mesh.position.x - spec.w / 2;
+                const maxX = p.mesh.position.x + spec.w / 2;
+                const minZ = p.mesh.position.z - spec.d / 2;
+                const maxZ = p.mesh.position.z + spec.d / 2;
+                const maxY = p.mesh.position.y + spec.h / 2;
+
+                if (player.position.x > minX && player.position.x < maxX &&
+                    player.position.z > minZ && player.position.z < maxZ) {
+                    if (maxY <= player.position.y && maxY > hitY) {
+                        hitY = maxY;
+                    }
+                }
+            });
+
+            if (hitY > -100) {
+                shadowMesh.visible = true;
+                shadowMesh.position.set(player.position.x, hitY + 0.02, player.position.z);
+                const dist = player.position.y - hitY;
+                const scale = Math.max(0.1, 1 - (dist / 12));
+                shadowMesh.scale.set(scale, scale, 1);
+            } else {
+                shadowMesh.visible = false;
+            }
+        }
+
+        function processEnvironmentEntities(deltaTime, time) {
+            platforms.forEach(p => {
+                const spec = p.spec;
+                if (spec.type === 'moving' && spec.move) {
+                    const m = spec.move;
+                    const oldPos = p.mesh.position[m.axis];
+                    
+                    m.current += m.speed * deltaTime;
+                    const range = m.max - m.min;
+                    const factor = (Math.sin(time * 0.001 * m.speed) + 1) / 2; 
+                    const targetCoord = m.min + factor * range;
+
+                    p.mesh.position[m.axis] = targetCoord;
+                    m.deltaActual = targetCoord - oldPos;
+                }
+                else if (spec.type === 'flicker') {
+                    const elapsed = time - spec.lastChange;
+                    if (elapsed > spec.flickerRate) {
+                        spec.state = !spec.state;
+                        spec.lastChange = time;
+                        p.mesh.material.opacity = spec.state ? 1.0 : 0.15;
+                    }
+                }
+            });
+
+            coinEntities.forEach(coin => {
+                if (!coin.collected) {
+                    coin.mesh.rotation.z += 1.5 * deltaTime;
+                }
+            });
+
+            hazardObstacles.forEach(h => {
+                const spec = h.spec;
+                if (spec.name === 'rotor' && spec.rotSpeed) {
+                    h.mesh.rotation.y += spec.rotSpeed * deltaTime;
+                }
+            });
+
+            for (let i = trailParticles.length - 1; i >= 0; i--) {
+                const p = trailParticles[i];
+                p.life -= deltaTime * p.decay;
+
+                if (p.isRing) {
+                    p.mesh.scale.x += p.scaleSpeed * deltaTime;
+                    p.mesh.scale.y += p.scaleSpeed * deltaTime;
+                    p.mesh.material.opacity = p.life;
+                } else {
+                    p.mesh.position.addScaledVector(p.vel, deltaTime);
+                    p.mesh.material.opacity = p.life;
+                }
+
+                if (p.life <= 0) {
+                    scene.remove(p.mesh);
+                    trailParticles.splice(i, 1);
+                }
+            }
+        }
+
+        function triggerRespawn() {
+            deaths++;
+            document.getElementById("ui-deaths").innerText = deaths;
+            playSynthSound('death');
+            
+            renderer.setClearColor(0xef4444, 0.4);
+            setTimeout(() => {
+                renderer.setClearColor(0x020617, 1);
+            }, 100);
+
+            player.position.copy(player.checkpoint);
+            player.velocity.set(0, 0, 0);
+            player.onGround = false;
+            triggerToast("체크포인트 복구!");
+        }
+
+        // Trigger stage clear with endless progression
+        function triggerStageClear() {
+            playSynthSound('stage_clear');
+            isPlaying = false; // Pause game physics during the score overlay
+            
+            // Scaled coins reward based on stage number
+            const bonusCoins = 30 + Math.min(currentStage * 5, 120);
+            playerCustomState.coins += bonusCoins;
+            savePlayerData();
+
+            // Populate Stage Clear screen stats
+            document.getElementById("clear-title").innerText = `STAGE ${currentStage} CLEAR`;
+            document.getElementById("clear-time").innerText = formatTime(gameTime);
+            document.getElementById("clear-deaths").innerText = deaths;
+            document.getElementById("clear-bonus").innerText = `+${bonusCoins} 🪙`;
+
+            // Increment endless stage index
+            currentStage++;
+
+            // Reveal Stage Clear overlay
+            document.getElementById("clear-screen").classList.remove("hidden");
+            document.getElementById("ui-overlay").classList.add("opacity-0");
+        }
+
+        let toastTimeout = null;
+        function triggerToast(message) {
+            const toast = document.getElementById("toast-message");
+            const text = document.getElementById("toast-text");
+            text.innerText = message;
+            toast.classList.remove("opacity-0", "scale-90", "pointer-events-none");
+            toast.classList.add("opacity-100", "scale-100");
+            
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove("opacity-100", "scale-100");
+                toast.classList.add("opacity-0", "scale-90", "pointer-events-none");
+            }, 1800);
+        }
+
+        function updateStageHUD() {
+            document.getElementById("ui-stage").innerText = currentStage;
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const secs = (seconds % 60).toString().padStart(2, '0');
+            return `${mins}:${secs}`;
+        }
+
+        let lastTime = 0;
+        function gameLoop(time) {
+            requestAnimationFrame(gameLoop);
+
+            const deltaTime = (time - lastTime) / 1000;
+            lastTime = time;
+
+            if (isPlaying) {
+                processEnvironmentEntities(deltaTime, time);
+                updatePhysics(deltaTime);
+            }
+
+            const targetCamAngleX = cameraAngleX;
+            const targetCamAngleY = cameraAngleY;
+
+            const targetCamOffset = new THREE.Vector3(
+                Math.sin(targetCamAngleX) * Math.cos(targetCamAngleY) * cameraDistance,
+                Math.sin(targetCamAngleY) * cameraDistance + 1.2, 
+                Math.cos(targetCamAngleX) * Math.cos(targetCamAngleY) * cameraDistance
+            );
+
+            const idealCameraPos = player.position.clone().add(targetCamOffset);
+            camera.position.lerp(idealCameraPos, 0.12); 
+            camera.lookAt(player.position.clone().add(new THREE.Vector3(0, 0.5, 0)));
+
+            renderer.render(scene, camera);
+        }
+
+        function openShop() {
+            isPlaying = false;
+            document.getElementById("shop-coins").innerText = playerCustomState.coins;
+            changeShopTab('skin');
+            document.getElementById("shop-screen").classList.remove("hidden");
+        }
+
+        function closeShop() {
+            document.getElementById("shop-screen").classList.add("hidden");
+            if (!document.getElementById("start-screen").classList.contains("hidden")) return;
+            isPlaying = true;
+        }
+
+        window.onload = function() {
+            initEngine();
+            checkDeviceResolution();
+            window.addEventListener('resize', checkDeviceResolution);
+
+            document.getElementById("btn-open-shop").onclick = openShop;
+            document.getElementById("btn-close-shop").onclick = closeShop;
+            document.getElementById("btn-start-shop").onclick = openShop;
+            document.getElementById("btn-clear-shop").onclick = function() {
+                document.getElementById("clear-screen").classList.add("hidden");
+                document.getElementById("ui-overlay").classList.remove("opacity-0");
+                openShop();
+            };
+
+            document.getElementById("btn-start-game").onclick = function() {
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+
+                document.getElementById("start-screen").classList.add("opacity-0", "pointer-events-none");
+                setTimeout(() => {
+                    document.getElementById("start-screen").classList.add("hidden");
+                }, 500);
+
+                isPlaying = true;
+                deaths = 0;
+                gameTime = 0;
+                document.getElementById("ui-deaths").innerText = "0";
+                document.getElementById("ui-timer").innerText = "00:00";
+                
+                clearInterval(timerInterval);
+                timerInterval = setInterval(() => {
+                    if (isPlaying) {
+                        gameTime++;
+                        document.getElementById("ui-timer").innerText = formatTime(gameTime);
+                    }
+                }, 1000);
+            };
+
+            // Play Again button action (enters next procedural stage in infinite loop)
+            document.getElementById("btn-play-again").onclick = function() {
+                document.getElementById("clear-screen").classList.add("hidden");
+                document.getElementById("ui-overlay").classList.remove("opacity-0");
+                buildStage(currentStage);
+
+                isPlaying = true;
+                deaths = 0;
+                gameTime = 0;
+                document.getElementById("ui-deaths").innerText = "0";
+                document.getElementById("ui-timer").innerText = "00:00";
+
+                clearInterval(timerInterval);
+                timerInterval = setInterval(() => {
+                    if (isPlaying) {
+                        gameTime++;
+                        document.getElementById("ui-timer").innerText = formatTime(gameTime);
+                    }
+                }, 1000);
+            };
+
+            // Confirm-less beautiful reset action
+            document.getElementById("btn-restart").onclick = function() {
+                currentStage = 1;
+                buildStage(currentStage);
+                deaths = 0;
+                gameTime = 0;
+                document.getElementById("ui-deaths").innerText = "0";
+                document.getElementById("ui-timer").innerText = "00:00";
+                triggerToast("스테이지가 1단계로 안전하게 리셋되었습니다!");
+            };
+
+            document.getElementById("btn-audio").onclick = function() {
+                soundEnabled = !soundEnabled;
+                const icon = document.getElementById("audio-icon");
+                if (soundEnabled) {
+                    icon.className = "fa-solid fa-volume-high text-lg";
+                } else {
+                    icon.className = "fa-solid fa-volume-xmark text-lg text-rose-500";
+                }
+            };
+
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
